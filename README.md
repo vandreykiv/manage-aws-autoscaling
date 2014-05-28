@@ -1,4 +1,4 @@
-# H1 asg-suspend-resume.py:
+# asg-suspend-resume.py:
 Can suspend/resume processes for AWS AutoScaling groups according to set of tags. 
 
 Usage:
@@ -36,6 +36,5 @@ As there is no any of them will be show matching AutoScaling groups.
 Group that match all creterias: prod-c7-dbsubmit1
 Group that match all creterias: stg-c7-dbsubmit1
 
-# H1
-aws_auth.py:
+# aws_auth.py:
 Sample file with <API key_id> and <secret_key>
