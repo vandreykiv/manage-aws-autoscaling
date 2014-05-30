@@ -53,64 +53,15 @@
 ##
 #######################################################################
 ## Date: 09/30/2013
-## vandreykiv (vyacheslav.andreykiv@bazaarvoice.com)
-## For details see AVI-1959
+## vandreykiv (email@andreykiv.com)
 #######################################################################
+
 
 import aws_auth
 import boto.ec2.autoscale
 import argparse
 import sys
-import urllib
-
-
-def get_meta():
-    """ Grabs Amazon supplied meta_data """
-    meta_data = {}
-    keys = ['ami-id', 'placement/availability-zone', 'instance-id',
-            'instance-type', 'local-hostname', 'local-ipv4',
-            'public-hostname', 'public-ipv4', 'security-groups', 'user-data']
-    for key in keys:
-        url = "http://169.254.169.254/latest/meta-data/" + key
-        meta_data[key] = urllib.urlopen(url).read()
-    meta_data['security-groups'] = meta_data['security-groups'].split('\n')
-    return meta_data
-
-
-def get_all_as_groups(as_connection):
-    """ Get all AutoScaling Groups in current region. """
-    as_groups_list = []
-    get_as_groups = as_connection.get_all_groups()
-    as_groups_list.extend(get_as_groups)
-
-    token = get_as_groups.next_token
-    while token is not None:
-        get_as_groups = as_connection.get_all_groups(
-            next_token=token)
-        as_groups_list.extend(get_as_groups)
-        token = get_as_groups.next_token
-    print "Processed {0} AutoScaling Group"\
-        .format(len(as_groups_list))
-    return as_groups_list
-
-
-def params_to_dict(tags):
-    """ Reformat tag-value params into dictionary. """
-    tags_dict = {}
-    tags_name_value_list = [tag[0].split(':') for tag in tags]
-    for tag_name, tag_value in tags_name_value_list:
-        tags_dict.setdefault(tag_name, []).append(tag_value)
-    return tags_dict
-
-
-def as_group_match(as_group, match_tags):
-    result = 0
-    for tag in as_group.tags:
-        if tag.key in match_tags:
-            if tag.value in match_tags[tag.key]:
-                result += 1
-    if result == len(match_tags):
-            return as_group
+import utils.asgutils
 
 
 def as_suspend(as_connection, match_as_groups):
@@ -166,21 +117,16 @@ def main():
     if args.region:
         region = args.region
     else:
-        meta_data = get_meta()
+        meta_data = utils.asgutils.get_metadata()
         region = meta_data['placement/availability-zone'][:-1]
 
     # Open connection to AWS AutoScale service.
     as_connection = boto.ec2.autoscale.connect_to_region(region,
                                      aws_access_key_id=aws_auth.AWS_ID,
                                      aws_secret_access_key=aws_auth.AWS_SECRET)
-    tags_dict = params_to_dict(args.tags)
+    tags_dict = utils.asgutils.params_to_dict(args.tags)
     # Find all AutoScaling groups that match tags from input arguments pattern
-    match_as_groups = []
-    for as_group in get_all_as_groups(as_connection):
-        match_as_group = as_group_match(as_group, tags_dict)
-        if match_as_group is not None:
-            match_as_groups.append(match_as_group)
-
+    match_as_groups = utils.asgutils.as_group_match(as_connection, tags_dict)
     # Suspend or resume all processes for necessary AutoScaling groups.
     if args.resume:
         as_resume(as_connection,
@@ -201,4 +147,5 @@ def main():
 if __name__ == "__main__":
     main()
     sys.exit(0)
+
 
